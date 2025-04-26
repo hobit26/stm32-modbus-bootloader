@@ -49,12 +49,17 @@
 /* USER CODE BEGIN PV */
 int bootloader_started_programming;
 int bootloader_needs_reset;
+unsigned char addr = 1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+#if (SERIAL_PORT_INSTANCE == 1)
 static void MX_USART1_UART_Init(void);
+#elif (SERIAL_PORT_INSTANCE == 2)
+static void MX_USART2_UART_Init(void);
+#endif
 static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -85,8 +90,7 @@ int main(void)
   NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
   /* SysTick_IRQn interrupt configuration */
-  NVIC_SetPriority(SysTick_IRQn,
-      NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+  NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
 
   /** NOJTAG: JTAG-DP Disabled and SW-DP Enabled
    */
@@ -105,10 +109,18 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+#if (SERIAL_PORT_INSTANCE == 1)
   MX_USART1_UART_Init();
+#elif (SERIAL_PORT_INSTANCE == 2)
+  MX_USART2_UART_Init();
+#endif
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  eMBInit(MB_RTU, 1, 0, 115200, MB_PAR_NONE);
+#ifdef ADDR_SELECT
+  addr = ((~LL_GPIO_ReadInputPort(GPIOB) >> 5) & 0xF) + 1;
+#endif
+
+  eMBInit(MB_RTU, addr, 0, 19200, MB_PAR_NONE);
   eMBEnable();
   eMBRegisterCB(MB_FLASH_UPDATE_FUNCION_CODE, eMBFlashUpdateCB);
   /* USER CODE END 2 */
@@ -144,7 +156,15 @@ int main(void)
   eMBDisable();
   eMBClose();
   LL_TIM_DeInit(TIM4);
+#if (SERIAL_PORT_INSTANCE == 1)
   LL_USART_DeInit(USART1);
+#elif (SERIAL_PORT_INSTANCE == 2)
+  LL_USART_DeInit(USART2);
+#endif
+  LL_GPIO_DeInit(GPIOA);
+#ifdef ADDR_SELECT
+  LL_GPIO_DeInit(GPIOB);
+#endif
   LL_GPIO_DeInit(GPIOC);
 
   bootloader_app_run();
@@ -212,9 +232,9 @@ static void MX_TIM4_Init(void)
   /* USER CODE BEGIN TIM4_Init 1 */
 
   /* USER CODE END TIM4_Init 1 */
-  TIM_InitStruct.Prescaler = 1749;
+  TIM_InitStruct.Prescaler = 71;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 71;
+  TIM_InitStruct.Autoreload = 1749;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
   LL_TIM_Init(TIM4, &TIM_InitStruct);
   LL_TIM_DisableARRPreload(TIM4);
@@ -227,6 +247,7 @@ static void MX_TIM4_Init(void)
 
 }
 
+#if (SERIAL_PORT_INSTANCE == 1)
 /**
  * @brief USART1 Initialization Function
  * @param None
@@ -269,7 +290,7 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 1 */
 
   /* USER CODE END USART1_Init 1 */
-  USART_InitStruct.BaudRate = 115200;
+  USART_InitStruct.BaudRate = 19200;
   USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
   USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
   USART_InitStruct.Parity = LL_USART_PARITY_NONE;
@@ -284,6 +305,67 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE END USART1_Init 2 */
 
 }
+#elif (SERIAL_PORT_INSTANCE == 2)
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  LL_USART_InitTypeDef USART_InitStruct = {0};
+
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /* Peripheral clock enable */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
+
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
+  /**USART2 GPIO Configuration
+  PA2   ------> USART2_TX
+  PA3   ------> USART2_RX
+  */
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_2;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_3;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_FLOATING;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* USART2 interrupt Init */
+  NVIC_SetPriority(USART2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(USART2_IRQn);
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  USART_InitStruct.BaudRate = 19200;
+  USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
+  USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
+  USART_InitStruct.Parity = LL_USART_PARITY_NONE;
+  USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
+  USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+  USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
+  LL_USART_Init(USART2, &USART_InitStruct);
+  LL_USART_ConfigAsyncMode(USART2);
+  LL_USART_Enable(USART2);
+#ifdef RS485_DE_Pin
+  LL_USART_EnableIT_TC(USART2);
+#endif
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+#endif
 
 /**
  * @brief GPIO Initialization Function
@@ -300,9 +382,17 @@ static void MX_GPIO_Init(void)
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOD);
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
+#ifdef ADDR_SELECT
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
+#endif
 
   /**/
   LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
+
+#ifdef RS485_DE_Pin
+  /**/
+  LL_GPIO_ResetOutputPin(RS485_DE_GPIO_Port, RS485_DE_Pin);
+#endif
 
   /**/
   GPIO_InitStruct.Pin = LED_Pin;
@@ -310,6 +400,23 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   LL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
+
+#ifdef RS485_DE_Pin
+  /**/
+  GPIO_InitStruct.Pin = RS485_DE_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  LL_GPIO_Init(RS485_DE_GPIO_Port, &GPIO_InitStruct);
+#endif
+
+#ifdef ADDR_SELECT
+  /**/
+  GPIO_InitStruct.Pin = ADDR_1_Pin|ADDR_2_Pin|ADDR_3_Pin|ADDR_4_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+#endif
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   /* USER CODE END MX_GPIO_Init_2 */

@@ -73,6 +73,18 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define LED_Pin LL_GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
+#define RS485_DE_Pin LL_GPIO_PIN_1
+#define RS485_DE_GPIO_Port GPIOA
+#ifdef ADDR_SELECT
+#define ADDR_1_Pin LL_GPIO_PIN_5
+#define ADDR_1_GPIO_Port GPIOB
+#define ADDR_2_Pin LL_GPIO_PIN_6
+#define ADDR_2_GPIO_Port GPIOB
+#define ADDR_3_Pin LL_GPIO_PIN_7
+#define ADDR_3_GPIO_Port GPIOB
+#define ADDR_4_Pin LL_GPIO_PIN_8
+#define ADDR_4_GPIO_Port GPIOB
+#endif
 #ifndef NVIC_PRIORITYGROUP_0
 #define NVIC_PRIORITYGROUP_0         ((uint32_t)0x00000007) /*!< 0 bit  for pre-emption priority,
                                                                  4 bits for subpriority */

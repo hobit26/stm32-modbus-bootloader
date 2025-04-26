@@ -21,24 +21,34 @@
 
 #include "port.h"
 
-#include "portserial.h"
-#include "stm32f1xx_ll_usart.h"
+#include "main.h"
 
 /* ----------------------- Modbus includes ----------------------------------*/
 #include "mb.h"
 #include "mbport.h"
 
+#if (SERIAL_PORT_INSTANCE == 1)
+  #define SERIAL_PORT                     USART1
+#elif (SERIAL_PORT_INSTANCE == 2)
+  #define SERIAL_PORT                     USART2
+#endif
+
 void vMBPortSerialEnable(BOOL xRxEnable, BOOL xTxEnable)
 {
   if (xRxEnable)
-    LL_USART_EnableIT_RXNE(USART1);
+    LL_USART_EnableIT_RXNE(SERIAL_PORT);
   else
-    LL_USART_DisableIT_RXNE(USART1);
+    LL_USART_DisableIT_RXNE(SERIAL_PORT);
 
   if (xTxEnable)
-    LL_USART_EnableIT_TXE(USART1);
+  {
+#ifdef RS485_DE_Pin
+    LL_GPIO_SetOutputPin(RS485_DE_GPIO_Port, RS485_DE_Pin);
+#endif
+    LL_USART_EnableIT_TXE(SERIAL_PORT);
+  }
   else
-    LL_USART_DisableIT_TXE(USART1);
+    LL_USART_DisableIT_TXE(SERIAL_PORT);
 }
 
 // инициализация в uart_init()
@@ -57,7 +67,7 @@ BOOL xMBPortSerialPutByte(CHAR ucByte)
   /* Put a byte in the UARTs transmit buffer. This function is called
    * by the protocol stack if pxMBFrameCBTransmitterEmpty( ) has been
    * called. */
-  LL_USART_TransmitData8(USART1, ucByte);
+  LL_USART_TransmitData8(SERIAL_PORT, ucByte);
   return TRUE;
 }
 
@@ -66,16 +76,6 @@ BOOL xMBPortSerialGetByte(CHAR *pucByte)
   /* Return the byte in the UARTs receive buffer. This function is called
    * by the protocol stack after pxMBFrameCBByteReceived( ) has been called.
    */
-  *pucByte = LL_USART_ReceiveData8(USART1);
+  *pucByte = LL_USART_ReceiveData8(SERIAL_PORT);
   return TRUE;
-}
-
-void USART1_RX_Callback(void)
-{
-  pxMBFrameCBByteReceived();
-}
-
-void USART1_TX_Callback(void)
-{
-  pxMBFrameCBTransmitterEmpty();
 }

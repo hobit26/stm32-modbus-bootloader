@@ -21,7 +21,6 @@
 
 /* ----------------------- Platform includes --------------------------------*/
 #include "port.h"
-#include "porttimer.h"
 #include "stm32f1xx_ll_tim.h"
 
 /* ----------------------- Modbus includes ----------------------------------*/
@@ -46,13 +45,4 @@ inline void vMBPortTimersDisable()
 {
   LL_TIM_DisableCounter(TIM4);
   LL_TIM_DisableIT_UPDATE(TIM4);
-}
-
-/* Create an ISR which is called whenever the timer has expired. This function
- * must then call pxMBPortCBTimerExpired( ) to notify the protocol stack that
- * the timer has expired.
- */
-void TIM4_IRQ_Callback(void)
-{
-  pxMBPortCBTimerExpired();
 }

@@ -22,8 +22,8 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "porttimer.h"
-#include "portserial.h"
+#include "mb.h"
+#include "mbport.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -204,33 +204,50 @@ void SysTick_Handler(void)
   */
 void TIM4_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM4_IRQn 0 */
   LL_TIM_ClearFlag_UPDATE(TIM4);
-  TIM4_IRQ_Callback();
-  /* USER CODE END TIM4_IRQn 0 */
-  /* USER CODE BEGIN TIM4_IRQn 1 */
-
-  /* USER CODE END TIM4_IRQn 1 */
+  pxMBPortCBTimerExpired();
 }
 
+#if (SERIAL_PORT_INSTANCE == 1)
 /**
   * @brief This function handles USART1 global interrupt.
   */
 void USART1_IRQHandler(void)
 {
-  /* USER CODE BEGIN USART1_IRQn 0 */
-  if (LL_USART_IsActiveFlag_RXNE(USART1) && LL_USART_IsEnabledIT_RXNE(USART1)) {
-    USART1_RX_Callback();
-  } else if (LL_USART_IsActiveFlag_TXE(USART1)
-      && LL_USART_IsEnabledIT_TXE(USART1)) {
-    USART1_TX_Callback();
+  if (LL_USART_IsActiveFlag_RXNE(USART1) && LL_USART_IsEnabledIT_RXNE(USART1))
+  {
+    pxMBFrameCBByteReceived();
+    return;
   }
-  /* USER CODE END USART1_IRQn 0 */
-  /* USER CODE BEGIN USART1_IRQn 1 */
-
-  /* USER CODE END USART1_IRQn 1 */
+  if (LL_USART_IsActiveFlag_TXE(USART1) && LL_USART_IsEnabledIT_TXE(USART1))
+  {
+    pxMBFrameCBTransmitterEmpty();
+    return;
+  }
 }
-
-/* USER CODE BEGIN 1 */
-
-/* USER CODE END 1 */
+#elif (SERIAL_PORT_INSTANCE == 2)
+/**
+  * @brief This function handles USART2 global interrupt.
+  */
+void USART2_IRQHandler(void)
+{
+  if (LL_USART_IsActiveFlag_RXNE(USART2) && LL_USART_IsEnabledIT_RXNE(USART2))
+  {
+    pxMBFrameCBByteReceived();
+    return;
+  }
+  if (LL_USART_IsActiveFlag_TXE(USART2) && LL_USART_IsEnabledIT_TXE(USART2))
+  {
+    pxMBFrameCBTransmitterEmpty();
+    return;
+  }
+#ifdef RS485_DE_Pin
+  if(LL_USART_IsActiveFlag_TC(USART2) & LL_USART_IsEnabledIT_TC(USART2))
+  {
+    LL_GPIO_ResetOutputPin(RS485_DE_GPIO_Port, RS485_DE_Pin);
+    LL_USART_ClearFlag_TC(USART2);
+    return;
+  }
+#endif
+}
+#endif

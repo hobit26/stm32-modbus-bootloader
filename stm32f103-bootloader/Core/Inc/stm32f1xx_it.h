@@ -56,7 +56,11 @@ void DebugMon_Handler(void);
 void PendSV_Handler(void);
 void SysTick_Handler(void);
 void TIM4_IRQHandler(void);
+#if (SERIAL_PORT_INSTANCE == 1)
 void USART1_IRQHandler(void);
+#elif (SERIAL_PORT_INSTANCE == 2)
+void USART2_IRQHandler(void);
+#endif
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */
